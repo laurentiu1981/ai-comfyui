@@ -1,0 +1,52 @@
+services:
+  comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cracoidic/crk-comfyui-blackwell:0.1
+    container_name: comfyui
+    restart: unless-stopped
+    ports:
+      - "8188:8188"
+    command: >
+      bash -c "python main.py
+      --listen 0.0.0.0
+      --port 8188
+      --use-sage-attention"
+    volumes:
+      # Model directories
+#      - ~/ai/models/controlnet:/app/models/controlnet
+#      - ~/ai/models/clip:/app/models/clip
+#      - ~/ai/models/embeddings:/app/models/embeddings
+#      - ~/ai/models/upscale_models:/app/models/upscale_models
+#      - ~/ai/models/clip_vision:/app/models/clip_vision
+      - ~/ai/models/loras:/app/models/loras
+      - ~/ai/models/diffusion_models:/app/models/diffusion_models
+      - ~/ai/models/text_encoders:/app/models/text_encoders
+      - ~/ai/models/unet:/app/models/unet
+      - ~/ai/models/checkpoints:/app/models/checkpoints
+      - ~/ai/models/vae:/app/models/vae
+      # Input and output
+      - ./input:/app/input
+      - ./output:/app/output
+      # Mount user directory for workflows and settings
+      - ./user:/app/user
+
+    shm_size: '16gb' # Also ensure your shared memory is high enough
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - NVIDIA_CPU_ONLY=0
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
+      - CUDA_MODULE_LOADING=LAZY
+      - TORCH_CUDNN_V8_API_ENABLED=1
+      # Uncomment to enable basic auth (both required)
+      - COMFYUI_USERNAME=${COMFYUI_USERNAME:-admin}
+      - COMFYUI_PASSWORD=${COMFYUI_PASSWORD:-password}

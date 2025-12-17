@@ -1,0 +1,36 @@
+# Environment variables
+.env
+
+# External model directory (if used)
+models/
+
+# Model files (if accidentally placed in root)
+*.safetensors
+*.ckpt
+*.pt
+*.bin
+*.tar
+*.zip
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
