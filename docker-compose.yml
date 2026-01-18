@@ -20,12 +20,13 @@ services:
 #      - ~/ai/models/embeddings:/app/models/embeddings
 #      - ~/ai/models/upscale_models:/app/models/upscale_models
 #      - ~/ai/models/clip_vision:/app/models/clip_vision
-      - ~/ai/models/loras:/app/models/loras
-      - ~/ai/models/diffusion_models:/app/models/diffusion_models
-      - ~/ai/models/text_encoders:/app/models/text_encoders
-      - ~/ai/models/unet:/app/models/unet
-      - ~/ai/models/checkpoints:/app/models/checkpoints
-      - ~/ai/models/vae:/app/models/vae
+#      - ~/ai/models/loras:/app/models/loras
+#      - ~/ai/models/diffusion_models:/app/models/diffusion_models
+#      - ~/ai/models/text_encoders:/app/models/text_encoders
+#      - ~/ai/models/unet:/app/models/unet
+#      - ~/ai/models/checkpoints:/app/models/checkpoints
+#      - ~/ai/models/vae:/app/models/vae
+      - ~/ai/models:/app/models
       # Input and output
       - ./input:/app/input
       - ./output:/app/output
