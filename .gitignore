@@ -29,6 +29,10 @@ Thumbs.db
 # Logs
 *.log
 
+# Custom nodes (track folder, ignore contents)
+custom_nodes/*
+!custom_nodes/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]

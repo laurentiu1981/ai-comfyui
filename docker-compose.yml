@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: cracoidic/crk-comfyui-blackwell:0.1
+    image: cracoidic/crk-comfyui-blackwell:0.3
     container_name: comfyui
     restart: unless-stopped
     ports:
@@ -32,6 +32,10 @@ services:
       - ./output:/app/output
       # Mount user directory for workflows and settings
       - ./user:/app/user
+      # Persist custom nodes across container recreations
+      - ./custom_nodes:/app/custom_nodes
+      # Persist Python packages (initialized from image on first use)
+      - site_packages:/opt/conda/lib/python3.11/site-packages
 
     shm_size: '16gb' # Also ensure your shared memory is high enough
     deploy:
@@ -51,3 +55,6 @@ services:
       # Uncomment to enable basic auth (both required)
       - COMFYUI_USERNAME=${COMFYUI_USERNAME:-admin}
       - COMFYUI_PASSWORD=${COMFYUI_PASSWORD:-password}
+
+volumes:
+  site_packages:

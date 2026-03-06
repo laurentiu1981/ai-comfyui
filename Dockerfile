@@ -43,12 +43,8 @@ ENV FORCE_CUDA="1"
 # Arch 12.0 is specifically for NVIDIA Blackwell (RTX 6000 / RTX 50 series)
 ENV TORCH_CUDA_ARCH_LIST="12.0"
 
-# Install SageAttention from GitHub
-RUN git clone https://github.com/thu-ml/SageAttention.git && \
-    cd SageAttention && \
-    # Patch setup.py to bypass auto-detection and force Blackwell (sm_120)
-    sed -i "/compute_capabilities = set()/a compute_capabilities = {\"12.0\"}" setup.py && \
-    pip install . --no-build-isolation
+# Install SageAttention from source (2.2.0 has native Blackwell support, no patching needed)
+RUN pip install git+https://github.com/thu-ml/SageAttention.git --no-build-isolation
 
 # Clone ComfyUI and install dependencies
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app && \
@@ -78,11 +74,15 @@ RUN pip install \
 # Install Basic Auth custom node (set COMFYUI_USERNAME and COMFYUI_PASSWORD env vars to enable)
 RUN git clone https://github.com/fofr/comfyui-basic-auth.git /app/custom_nodes/comfyui-basic-auth
 
+# Copy and set entrypoint script (ensures base custom nodes exist when custom_nodes is mounted)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose ComfyUI port
 EXPOSE 8188
 
 # Set working directory to ComfyUI
 WORKDIR /app
 
-# Default command
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--use-sage-attention"]
