@@ -5,7 +5,7 @@ Dockerized ComfyUI optimized for NVIDIA Blackwell GPUs (RTX PRO 6000, RTX 50 ser
 ## Requirements
 
 - Docker with NVIDIA Container Toolkit
-- NVIDIA Blackwell GPU with driver supporting CUDA 12.8+
+- NVIDIA Blackwell GPU with driver supporting CUDA 13.0+
 
 ## Quick Start
 
@@ -37,10 +37,61 @@ output/             # Generated images
 
 ## Stack
 
-- CUDA 12.8 / Python 3.13 / PyTorch 2.7.1
+- CUDA 13.0 / Python 3.12 / PyTorch 2.10.0
 - SageAttention 2.2
 - ComfyUI + ComfyUI-Manager
 - xformers
+
+## Upgrading the Base Image
+
+When upgrading to a new PyTorch base image (e.g. newer CUDA or PyTorch version), follow these steps:
+
+### 1. Update `Dockerfile`
+
+Change the `FROM` line to the new image tag:
+```dockerfile
+FROM pytorch/pytorch:<version>-cuda<cuda_version>-cudnn9-devel
+```
+
+Check [Docker Hub](https://hub.docker.com/r/pytorch/pytorch/tags) for available tags.
+
+### 2. Check the Python version and site-packages path
+
+The new image may use a different Python version or package path:
+```bash
+docker run --rm pytorch/pytorch:<new-tag> python -c "import sys; import site; print(f'Python {sys.version}'); print(site.getsitepackages()[0])"
+```
+
+### 3. Update paths if Python version changed
+
+If the site-packages path changed, update it in two places:
+
+- **`docker-compose.yml`** — the `site_packages` volume mount:
+  ```yaml
+  - site_packages:/usr/local/lib/python<VERSION>/dist-packages
+  ```
+
+- **`entrypoint.sh`** — the `STAMP_DIR` path:
+  ```bash
+  STAMP_DIR="/usr/local/lib/python<VERSION>/dist-packages/.node_stamps"
+  ```
+
+### 4. Check for Ubuntu/package changes
+
+Newer base images may use a different Ubuntu version. Common issues:
+- `libgl1-mesa-glx` → replaced by `libgl1` in Ubuntu 24.04+
+- `PIP_BREAK_SYSTEM_PACKAGES=1` — needed if the image uses PEP 668 managed Python
+
+### 5. Reset the site_packages volume and rebuild
+
+```bash
+docker compose down
+docker volume rm <project>_site_packages   # e.g. ai-comfyui_site_packages
+docker compose build
+docker compose up -d
+```
+
+The named volume must be removed so Docker re-initializes it from the new image. Custom node code in `./custom_nodes/` is unaffected — their pip deps will be reinstalled automatically on first start.
 
 ## Scripts
 
