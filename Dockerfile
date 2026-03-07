@@ -1,19 +1,20 @@
 # ComfyUI with SageAttention for NVIDIA Blackwell (RTX PRO 6000, RTX 50 series)
-# Using PyTorch 2.7.1 + CUDA 12.8 (proven to work with Blackwell)
+# Using PyTorch 2.10.0 + CUDA 13.0
 
-FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel
+FROM pytorch/pytorch:2.10.0-cuda13.0-cudnn9-devel
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV MAX_JOBS=8
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     wget \
     curl \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -52,8 +53,8 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app && \
 
 WORKDIR /app
 
-# Reinstall PyTorch to ensure version stays at 2.7.1
-#RUN pip install torch==2.7.1+cu128 torchvision==0.22.1+cu128 torchaudio==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
+# Reinstall PyTorch if ComfyUI requirements override the version
+#RUN pip install torch==2.10.0+cu130 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
 
 # Install ComfyUI Manager
 RUN git clone https://github.com/Comfy-Org/ComfyUI-Manager.git /app/custom_nodes/ComfyUI-Manager && \
@@ -61,7 +62,7 @@ RUN git clone https://github.com/Comfy-Org/ComfyUI-Manager.git /app/custom_nodes
 
 # Install xformers and additional useful packages
 RUN pip install \
-    xformers==0.0.31.post1 \
+    xformers \
     huggingface-hub[cli] \
     opencv-python \
     scipy \

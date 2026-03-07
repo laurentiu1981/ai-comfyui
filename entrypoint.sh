@@ -17,7 +17,7 @@ fi
 
 # Install requirements only for custom nodes that haven't been installed yet.
 # Stamp files live in site-packages so they're removed if the volume is reset.
-STAMP_DIR="/opt/conda/lib/python3.11/site-packages/.node_stamps"
+STAMP_DIR="/usr/local/lib/python3.12/dist-packages/.node_stamps"
 mkdir -p "$STAMP_DIR"
 
 for req in /app/custom_nodes/*/requirements.txt; do

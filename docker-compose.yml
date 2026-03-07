@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: cracoidic/crk-comfyui-blackwell:0.3
+    image: cracoidic/crk-comfyui-blackwell:pytorch-2.10.0-cuda13.0
     container_name: comfyui
     restart: unless-stopped
     ports:
@@ -35,7 +35,7 @@ services:
       # Persist custom nodes across container recreations
       - ./custom_nodes:/app/custom_nodes
       # Persist Python packages (initialized from image on first use)
-      - site_packages:/opt/conda/lib/python3.11/site-packages
+      - site_packages:/usr/local/lib/python3.12/dist-packages
 
     shm_size: '16gb' # Also ensure your shared memory is high enough
     deploy:
