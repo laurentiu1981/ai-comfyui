@@ -75,6 +75,15 @@ RUN pip install \
 # Install Basic Auth custom node (set COMFYUI_USERNAME and COMFYUI_PASSWORD env vars to enable)
 RUN git clone https://github.com/fofr/comfyui-basic-auth.git /app/custom_nodes/comfyui-basic-auth
 
+# WSL workaround: the NVIDIA Container Toolkit does not mount the WSL driver's
+# NGX library into the container, but comfyui_nvidia_rtx_nodes (nvvfx Video Super
+# Resolution) needs it or NvVFX_Load fails with "effect not properly initialized"
+# (code -12). Vendored from the WSL host's /usr/lib/wsl/lib/libnvidia-ngx.so.1.
+# NOTE: this lib is tied to the host NVIDIA driver version — re-vendor it if the
+# driver is updated and VSR starts failing again.
+COPY vendor/wsl/libnvidia-ngx.so.1 /usr/lib/x86_64-linux-gnu/libnvidia-ngx.so.1
+RUN ldconfig
+
 # Copy and set entrypoint script (ensures base custom nodes exist when custom_nodes is mounted)
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

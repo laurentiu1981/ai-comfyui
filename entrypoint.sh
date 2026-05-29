@@ -20,6 +20,7 @@ fi
 STAMP_DIR="/usr/local/lib/python3.12/dist-packages/.node_stamps"
 mkdir -p "$STAMP_DIR"
 
+nodes_changed=0
 for req in /app/custom_nodes/*/requirements.txt; do
     [ -f "$req" ] || continue
     node_name=$(basename "$(dirname "$req")")
@@ -31,8 +32,19 @@ for req in /app/custom_nodes/*/requirements.txt; do
     fi
 
     echo "Installing requirements for $node_name..."
-    pip install -r "$req" && echo "$current_hash" > "$stamp_file"
+    pip install -r "$req" && echo "$current_hash" > "$stamp_file" && nodes_changed=1
 done
+
+# Re-assert ComfyUI's own pins LAST so they win over anything a custom node
+# downgraded (e.g. comfyui_layerstyle -> inference-gpu pins av<13, but ComfyUI
+# needs av>=16). Runs when a node was (re)installed this boot or when core
+# requirements changed (image rebuild / volume reset). Skipped on a clean restart.
+CORE_STAMP="$STAMP_DIR/.comfyui_core"
+core_hash=$(md5sum /app/requirements.txt | cut -d' ' -f1)
+if [ "$nodes_changed" = "1" ] || [ "$(cat "$CORE_STAMP" 2>/dev/null)" != "$core_hash" ]; then
+    echo "Re-asserting ComfyUI core requirements..."
+    pip install -r /app/requirements.txt && echo "$core_hash" > "$CORE_STAMP"
+fi
 
 # Run the main command
 exec "$@"

@@ -50,6 +50,8 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - NVIDIA_CPU_ONLY=0
       - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
+      # Allow pip to resolve NVIDIA-hosted packages (e.g. nvidia-vfx for comfyui_nvidia_rtx_nodes)
+      - PIP_EXTRA_INDEX_URL=https://pypi.nvidia.com/
       - CUDA_MODULE_LOADING=LAZY
       - TORCH_CUDNN_V8_API_ENABLED=1
       # Uncomment to enable basic auth (both required)
