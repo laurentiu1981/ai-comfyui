@@ -46,5 +46,29 @@ if [ "$nodes_changed" = "1" ] || [ "$(cat "$CORE_STAMP" 2>/dev/null)" != "$core_
     pip install -r /app/requirements.txt && echo "$core_hash" > "$CORE_STAMP"
 fi
 
+# ComfyUI-Trellis2 needs extras its requirements.txt can't express (see PATCHES.md
+# 2026-07-12): bundled CUDA wheels, CUDA-12 runtime libs (the wheels link
+# cudart/nvrtc 12 while the image is CUDA 13), nvdiffrast rebuilt from source to
+# match the image's torch ABI, and transformers>=4.56 (DINOv3ViTModel).
+# Runs only while the node is present; re-runs after a volume reset (stamp lives
+# in site-packages) or when the node's bundled wheels change.
+TRELLIS_WHEELS="/app/custom_nodes/ComfyUI-Trellis2/wheels/Linux/Torch291" # cp312 = image python
+if [ -d "$TRELLIS_WHEELS" ]; then
+    stamp_file="$STAMP_DIR/ComfyUI-Trellis2.extras"
+    current_hash=$(ls "$TRELLIS_WHEELS" | md5sum | cut -d' ' -f1)
+    if [ ! -f "$stamp_file" ] || [ "$(cat "$stamp_file")" != "$current_hash" ]; then
+        echo "Installing ComfyUI-Trellis2 extras (CUDA wheels, cu12 libs, nvdiffrast, transformers)..."
+        pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12 plyfile zstandard \
+        && pip install --no-deps "$TRELLIS_WHEELS"/cumesh-*.whl "$TRELLIS_WHEELS"/o_voxel-*.whl \
+               "$TRELLIS_WHEELS"/flex_gemm-*.whl "$TRELLIS_WHEELS"/nvdiffrec_render-*.whl \
+        && TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-12.0}" pip install --no-build-isolation \
+               --force-reinstall --no-deps 'nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast.git@v0.4.0' \
+        && { python -c 'from transformers import DINOv3ViTModel' 2>/dev/null \
+             || pip install 'transformers==4.56.2'; } \
+        && echo "$current_hash" > "$stamp_file" \
+        || echo "WARNING: ComfyUI-Trellis2 extras install failed; the node may not load (see PATCHES.md)"
+    fi
+fi
+
 # Run the main command
 exec "$@"

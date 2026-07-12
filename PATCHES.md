@@ -300,6 +300,56 @@ the Dockerfile change makes it permanent on the next `docker compose build`.
 
 ---
 
+## 2026-07-12 — Manager "Installation failed" (KeyError: 'files') + ComfyUI-Trellis2 install
+
+Three issues found while installing `ComfyUI-Trellis2` (visualbruno) via Manager UI.
+
+| # | Symptom | Root cause | Fix | Survives |
+|---|---------|-----------|-----|----------|
+| 1 | Manager UI "Installation failed:" (empty), server log `KeyError: 'files'` in `install_by_id` | Manager bug: registry-only node id `ComfyUI-TRELLIS2` (PozzettiAndrea) collides case-insensitively with legacy-list name `ComfyUI-Trellis2` (visualbruno); `/customnode/getlist` injects the registry record (which has no `files` key) into the *shared cached* node map, shadowing the legacy entry the installer needs | Patched `custom_nodes/ComfyUI-Manager/glob/manager_core.py` (`get_unified_total_nodes`): guard `res[cnr_id] = item` with `if cnr_id not in res` | Lives in `custom_nodes/` — **lost if Manager is updated**; bug present upstream at time of writing (v3.39.2 and `main`), consider filing/PRing upstream |
+| 2 | Manager dep install fails: uv "The interpreter at /usr is externally managed" | Manager config `use_uv = True`; uv ignores `PIP_BREAK_SYSTEM_PACKAGES` (pip-only) and needs its own env var | Added `UV_BREAK_SYSTEM_PACKAGES=1` to `docker-compose.yml` env + `Dockerfile` | Yes (both in repo) |
+| 3 | Trellis2 `IMPORT FAILED: No module named 'cumesh'` then `libcudart.so.12` missing | Node needs prebuilt CUDA wheels shipped in its `wheels/Linux/` dir; best match `Torch291` (cp312) links CUDA 12 while image is CUDA 13 | Installed wheels with `--no-deps` (o_voxel's `cumesh@git+...` dep otherwise triggers a source build) + `pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12`; added their lib dirs to `LD_LIBRARY_PATH` in `docker-compose.yml` | Wheels/pip pkgs live in `site_packages` volume — **re-run after a volume reset**; env var survives |
+
+**Issues 3-5 are now fully automated** (added later the same day): `entrypoint.sh` has a
+stamp-guarded "ComfyUI-Trellis2 extras" block that installs the bundled wheels, the cu12
+runtime libs, the source-built nvdiffrast, and the transformers upgrade — but only while
+the node directory exists, and only when the stamp is missing (volume reset) or the node's
+bundled wheels changed. Nothing manual to re-run anymore. The commands below are kept for
+reference/debugging.
+
+**Issue 3 install commands (what the entrypoint runs):**
+```bash
+docker compose exec comfyui bash -c "pip install --no-deps /app/custom_nodes/ComfyUI-Trellis2/wheels/Linux/Torch291/{cumesh,o_voxel,flex_gemm,nvdiffrec_render}-*.whl"
+docker compose exec comfyui pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12 plyfile zstandard
+```
+
+**Issue 4 — nvdiffrast wheel ABI-incompatible with torch 2.10.** The `Torch291` nvdiffrast
+wheel fails with `undefined symbol: ...c10_cuda_check_implementationE...` (torch 2.9 C++ ABI),
+which also breaks `o_voxel` (imports nvdiffrast). Fixed by rebuilding official NVlabs
+nvdiffrast v0.4.0 from source against torch 2.10/CUDA 13 (automated in `entrypoint.sh`):
+```bash
+docker compose exec comfyui bash -c "TORCH_CUDA_ARCH_LIST='12.0' pip install --no-build-isolation --force-reinstall --no-deps 'nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast.git@v0.4.0'"
+```
+The cp313 `Torch2110` wheels can't be used (image python is 3.12). `custom_rasterizer`
+wheel installs but exposes no importable module — appears unused by Trellis2 core.
+Rollback if needed: reinstall the bundled wheel with
+`pip install --no-deps --force-reinstall /app/custom_nodes/ComfyUI-Trellis2/wheels/Linux/Torch291/nvdiffrast-*.whl`.
+
+**Issue 5 — `cannot import name 'DINOv3ViTModel' from 'transformers'`.** Trellis2 needs
+DINOv3 support, added in transformers 4.56. Upgraded `transformers 4.55.4 → 4.56.2`
+(+ `tokenizers 0.21.4 → 0.22.2`). All node pins are `>=` minimums so no conflicts, except a
+metadata-only complaint from `inference-gpu` (layerstyle dep, wants `tokenizers<0.22`) —
+`comfyui_layerstyle` still imports fine. The entrypoint re-applies this after a volume
+reset (image ships 4.55.4), and only if `DINOv3ViTModel` is missing from transformers.
+
+**Result:** ComfyUI-Trellis2 loads cleanly. Runtime note (not yet tested): per the node's
+README, generation requires the gated HF repo `facebook/dinov3-vitl16-pretrain-lvd1689m`
+cloned into `models/facebook/dinov3-vitl16-pretrain-lvd1689m` (needs HF access approval).
+Pre-existing failures unrelated to this session: `ComfyUI-GGUF-FantasyTalking` (syntax
+error), `comfyui-mmaudio` (`No module named 'timm.layers'`).
+
+---
+
 ## Outstanding — other missing nodes in `crk_ltx2.3-10eros.json`
 
 After the 10S swap, the workflow still references nodes from **other** packs that are

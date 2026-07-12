@@ -84,6 +84,11 @@ RUN git clone https://github.com/fofr/comfyui-basic-auth.git /app/custom_nodes/c
 COPY vendor/wsl/libnvidia-ngx.so.1 /usr/lib/x86_64-linux-gnu/libnvidia-ngx.so.1
 RUN ldconfig
 
+# Like PIP_BREAK_SYSTEM_PACKAGES but for `uv pip`, which ComfyUI-Manager uses when
+# use_uv is enabled. Kept near the end of the file: ENV position doesn't matter at
+# runtime, and placing it early would bust the cache of all the heavy layers above.
+ENV UV_BREAK_SYSTEM_PACKAGES=1
+
 # Copy and set entrypoint script (ensures base custom nodes exist when custom_nodes is mounted)
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
