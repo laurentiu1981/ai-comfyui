@@ -1,0 +1,18 @@
+diff --git a/glob/manager_core.py b/glob/manager_core.py
+index e0b3a6fe..8b8112c0 100644
+--- a/glob/manager_core.py
++++ b/glob/manager_core.py
+@@ -3081,7 +3081,12 @@ async def get_unified_total_nodes(channel, mode, regsitry_cache_mode='cache'):
+             if import_fail:
+                 item['import-fail'] = True
+ 
+-            res[cnr_id] = item
++            # Don't overwrite an existing custom-node-list entry whose name collides
++            # case-insensitively with this registry id (e.g. visualbruno/ComfyUI-Trellis2
++            # vs registry 'ComfyUI-TRELLIS2'): `res` is the shared cached map used later
++            # by install_by_id, and registry items lack the 'files' key it requires.
++            if cnr_id not in res:
++                res[cnr_id] = item
+ 
+     return res
+ 

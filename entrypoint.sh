@@ -15,6 +15,21 @@ if [ ! -d "/app/custom_nodes/comfyui-basic-auth" ]; then
     git clone https://github.com/fofr/comfyui-basic-auth.git /app/custom_nodes/comfyui-basic-auth
 fi
 
+# Re-apply vendored ComfyUI-Manager patches (see PATCHES.md). The Manager lives in
+# the host-mounted custom_nodes/, so updating it silently reverts local fixes; this
+# re-applies them on every boot. Idempotent: skips if already applied, warns if the
+# patch no longer matches the source (Manager updated past it).
+for patch in /patches/comfyui-manager-*.patch; do
+    [ -f "$patch" ] || continue
+    if git -C /app/custom_nodes/ComfyUI-Manager apply --reverse --check "$patch" 2>/dev/null; then
+        : # already applied
+    elif git -C /app/custom_nodes/ComfyUI-Manager apply "$patch" 2>/dev/null; then
+        echo "Applied ComfyUI-Manager patch: $(basename "$patch")"
+    else
+        echo "WARNING: $(basename "$patch") no longer applies cleanly; check if still needed (PATCHES.md)"
+    fi
+done
+
 # Install requirements only for custom nodes that haven't been installed yet.
 # Stamp files live in site-packages so they're removed if the volume is reset.
 STAMP_DIR="/usr/local/lib/python3.12/dist-packages/.node_stamps"

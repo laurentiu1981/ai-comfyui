@@ -89,6 +89,10 @@ RUN ldconfig
 # runtime, and placing it early would bust the cache of all the heavy layers above.
 ENV UV_BREAK_SYSTEM_PACKAGES=1
 
+# Vendored patches for custom nodes living in the host-mounted custom_nodes/
+# (applied idempotently by entrypoint.sh on every boot; see PATCHES.md)
+COPY patches/ /patches/
+
 # Copy and set entrypoint script (ensures base custom nodes exist when custom_nodes is mounted)
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
