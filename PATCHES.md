@@ -359,6 +359,16 @@ metadata-only complaint from `inference-gpu` (layerstyle dep, wants `tokenizers<
 `comfyui_layerstyle` still imports fine. The entrypoint re-applies this after a volume
 reset (image ships 4.55.4), and only if `DINOv3ViTModel` is missing from transformers.
 
+**Issue 4c (2026-07-13) — `cumesh` wheel also torch-2.10-broken at runtime.** UV-unwrap
+stage fails with `RuntimeError: Cannot access data pointer of Tensor that doesn't have
+storage`. Rebuilt from the author's fork `visualbruno/CuMesh`. Build gotcha: its setup.py
+points Eigen includes at `third_party/cubvh/third_party/eigen` (an unfetched submodule
+path) while the Eigen headers are actually vendored at the repo root — the entrypoint
+clones the repo, symlinks the path, then `pip install`s the checkout. Of the bundled wheel
+set only `flex_gemm` (pure Triton) and `nvdiffrec_render` remain un-rebuilt; if a later
+stage throws a weird RuntimeError, rebuild those next (`JeffreyXiang/FlexGEMM`; ask
+visualbruno for nvdiffrec_render's source).
+
 **Issue 6 (2026-07-13) — `pymeshfix` missing at workflow run time.** It's an *optional*,
 lazily-imported dep of `comfyui-geometrypack`'s MeshFix node (absent from that pack's
 requirements.txt, so the entrypoint's auto-install never sees it). Installed manually and

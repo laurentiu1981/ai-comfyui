@@ -76,12 +76,26 @@ if [ -d "$TRELLIS_WHEELS" ]; then
         # pymeshfix: optional dep of comfyui-geometrypack's MeshFix node (lazy import,
         # not in that pack's requirements.txt), used by the same 3D workflows
         pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12 plyfile zstandard pymeshfix \
-        && pip install --no-deps "$TRELLIS_WHEELS"/cumesh-*.whl \
+        && pip install --no-deps \
                "$TRELLIS_WHEELS"/flex_gemm-*.whl "$TRELLIS_WHEELS"/nvdiffrec_render-*.whl \
         && TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-12.0}" pip install --no-build-isolation \
                --force-reinstall --no-deps \
                'nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast.git@v0.4.0' \
                'o_voxel @ git+https://github.com/visualbruno/TRELLIS.2.git#subdirectory=o-voxel' \
+        && ( \
+               # cumesh: bundled wheel breaks at runtime on torch 2.10 (uv_unwrap:
+               # "Cannot access data pointer of Tensor that doesn't have storage").
+               # Built from the author's fork; its setup.py expects Eigen under
+               # third_party/cubvh/third_party/eigen (unfetched submodule) while the
+               # headers are vendored at the repo root, hence the symlink.
+               rm -rf /tmp/cumesh-src \
+               && git clone --depth 1 https://github.com/visualbruno/CuMesh.git /tmp/cumesh-src \
+               && mkdir -p /tmp/cumesh-src/third_party/cubvh/third_party/eigen \
+               && ln -sfn /tmp/cumesh-src/Eigen /tmp/cumesh-src/third_party/cubvh/third_party/eigen/Eigen \
+               && TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-12.0}" pip install --no-build-isolation \
+                      --force-reinstall --no-deps /tmp/cumesh-src \
+               && rm -rf /tmp/cumesh-src \
+           ) \
         && { python -c 'from transformers import DINOv3ViTModel' 2>/dev/null \
              || pip install 'transformers==4.56.2'; } \
         && echo "$current_hash" > "$stamp_file" \
