@@ -335,6 +335,15 @@ wheel installs but exposes no importable module — appears unused by Trellis2 c
 Rollback if needed: reinstall the bundled wheel with
 `pip install --no-deps --force-reinstall /app/custom_nodes/ComfyUI-Trellis2/wheels/Linux/Torch291/nvdiffrast-*.whl`.
 
+**Issue 4b (2026-07-13) — `o_voxel` wheel also torch-2.10-incompatible, but at *runtime*.**
+The bundled `Torch291` o_voxel imports fine but its C++ `mesh_to_flexible_dual_grid_cpu`
+fails during the texturing stage with `RuntimeError: set_stride is not allowed on a Tensor
+created from .data or .detach()` (stricter metadata check in torch 2.10; reproducible with
+a trivial box mesh). Rebuilt from the official source — `microsoft/TRELLIS.2`, subdirectory
+`o-voxel` — against torch 2.10/CUDA 13, same pattern as nvdiffrast; `entrypoint.sh` now
+source-builds o_voxel too instead of installing the bundled wheel. Lesson: a wheel that
+*imports* cleanly can still be ABI/behavior-broken at runtime.
+
 **Issue 5 — `cannot import name 'DINOv3ViTModel' from 'transformers'`.** Trellis2 needs
 DINOv3 support, added in transformers 4.56. Upgraded `transformers 4.55.4 → 4.56.2`
 (+ `tokenizers 0.21.4 → 0.22.2`). All node pins are `>=` minimums so no conflicts, except a
