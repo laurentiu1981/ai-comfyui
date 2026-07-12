@@ -79,7 +79,7 @@ if [ -d "$TRELLIS_WHEELS" ]; then
         && TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-12.0}" pip install --no-build-isolation \
                --force-reinstall --no-deps \
                'nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast.git@v0.4.0' \
-               'o_voxel @ git+https://github.com/microsoft/TRELLIS.2.git#subdirectory=o-voxel' \
+               'o_voxel @ git+https://github.com/visualbruno/TRELLIS.2.git#subdirectory=o-voxel' \
         && { python -c 'from transformers import DINOv3ViTModel' 2>/dev/null \
              || pip install 'transformers==4.56.2'; } \
         && echo "$current_hash" > "$stamp_file" \

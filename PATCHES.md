@@ -339,10 +339,18 @@ Rollback if needed: reinstall the bundled wheel with
 The bundled `Torch291` o_voxel imports fine but its C++ `mesh_to_flexible_dual_grid_cpu`
 fails during the texturing stage with `RuntimeError: set_stride is not allowed on a Tensor
 created from .data or .detach()` (stricter metadata check in torch 2.10; reproducible with
-a trivial box mesh). Rebuilt from the official source — `microsoft/TRELLIS.2`, subdirectory
-`o-voxel` — against torch 2.10/CUDA 13, same pattern as nvdiffrast; `entrypoint.sh` now
-source-builds o_voxel too instead of installing the bundled wheel. Lesson: a wheel that
+a trivial box mesh). Rebuilt from source against torch 2.10/CUDA 13, same pattern as nvdiffrast; `entrypoint.sh`
+now source-builds o_voxel too instead of installing the bundled wheel. Lesson: a wheel that
 *imports* cleanly can still be ABI/behavior-broken at runtime.
+
+**Important — build from visualbruno's fork, not Microsoft upstream.** The first rebuild
+used `microsoft/TRELLIS.2` and fixed the crash but broke the *next* stage
+(`ImportError: tiled_flexible_dual_grid_to_mesh`): the node author maintains a modified
+o_voxel (tiled decoder etc.) in his fork **`visualbruno/TRELLIS.2`** (`o-voxel`
+subdirectory), which is what his bundled wheels are built from — and it's even newer than
+the wheels. The entrypoint uses the fork. Same likely applies if the remaining bundled
+wheels ever need rebuilding: his `visualbruno/CuMesh` fork for cumesh; flex_gemm from
+`JeffreyXiang/FlexGEMM`.
 
 **Issue 5 — `cannot import name 'DINOv3ViTModel' from 'transformers'`.** Trellis2 needs
 DINOv3 support, added in transformers 4.56. Upgraded `transformers 4.55.4 → 4.56.2`
