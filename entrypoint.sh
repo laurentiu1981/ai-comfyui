@@ -73,7 +73,9 @@ if [ -d "$TRELLIS_WHEELS" ]; then
     current_hash=$(ls "$TRELLIS_WHEELS" | md5sum | cut -d' ' -f1)
     if [ ! -f "$stamp_file" ] || [ "$(cat "$stamp_file")" != "$current_hash" ]; then
         echo "Installing ComfyUI-Trellis2 extras (CUDA wheels, cu12 libs, nvdiffrast, transformers)..."
-        pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12 plyfile zstandard \
+        # pymeshfix: optional dep of comfyui-geometrypack's MeshFix node (lazy import,
+        # not in that pack's requirements.txt), used by the same 3D workflows
+        pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12 plyfile zstandard pymeshfix \
         && pip install --no-deps "$TRELLIS_WHEELS"/cumesh-*.whl \
                "$TRELLIS_WHEELS"/flex_gemm-*.whl "$TRELLIS_WHEELS"/nvdiffrec_render-*.whl \
         && TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-12.0}" pip install --no-build-isolation \

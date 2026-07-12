@@ -359,6 +359,11 @@ metadata-only complaint from `inference-gpu` (layerstyle dep, wants `tokenizers<
 `comfyui_layerstyle` still imports fine. The entrypoint re-applies this after a volume
 reset (image ships 4.55.4), and only if `DINOv3ViTModel` is missing from transformers.
 
+**Issue 6 (2026-07-13) — `pymeshfix` missing at workflow run time.** It's an *optional*,
+lazily-imported dep of `comfyui-geometrypack`'s MeshFix node (absent from that pack's
+requirements.txt, so the entrypoint's auto-install never sees it). Installed manually and
+added to the entrypoint's Trellis2-extras pip line (same 3D workflow family).
+
 **Result:** ComfyUI-Trellis2 loads cleanly. Runtime note (not yet tested): per the node's
 README, generation requires the gated HF repo `facebook/dinov3-vitl16-pretrain-lvd1689m`
 cloned into `models/facebook/dinov3-vitl16-pretrain-lvd1689m` (needs HF access approval).
