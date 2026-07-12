@@ -350,6 +350,42 @@ error), `comfyui-mmaudio` (`No module named 'timm.layers'`).
 
 ---
 
+## 2026-07-12 — `UltraShapeModelLoader` missing (workflow `PixelArtistry_Trellis2_Ultrashape03`)
+
+**Symptom:** workflow reports missing node pack `Rizzlord/ComfyUI-UltraShape`
+(`UltraShapeModelLoader`), but Manager's "Install Missing Nodes" offers only an unrelated
+suggestion ("Anomalous Model Browser").
+
+**Root cause:** `Rizzlord/ComfyUI-UltraShape` is not registered in the Comfy Registry nor
+in the legacy custom-node list, so Manager cannot resolve or offer it — nothing wrong with
+our setup. The already-installed `Comfyui-UltraShape1` (jtydhr88's rework, installed from
+the registry) exposes *renamed* classes (`UltraShapeLoadModel` etc.) and does not satisfy
+the workflow.
+
+**Fix:** cloned https://github.com/Rizzlord/ComfyUI-UltraShape into `custom_nodes/`
+(coexists with `Comfyui-UltraShape1`; no class-name overlap) + `pip install typeguard`.
+Node registers fine; the missing-node error is gone. A minimal local
+`ComfyUI-UltraShape/requirements.txt` (just `typeguard`; untracked in the pack's repo)
+makes the entrypoint reinstall it after a volume reset. If the pack ever adds its own
+top-level requirements.txt upstream, `git pull` there will refuse to overwrite the local
+file — delete the local one and reconcile.
+
+**⚠ Do NOT install `ComfyUI-UltraShape/UltraShape-1.0/requirements.txt`** — it's the
+vendored research project's hard-pinned list (`transformers==4.37.2`, `diffusers==0.30.0`,
+old `sageattention`, …) and would downgrade/break the shared environment (incl. Trellis2's
+transformers>=4.56). It's nested, so `entrypoint.sh`'s auto-install ignores it — keep it
+that way.
+
+**Outstanding:** running the UltraShape model needs `flash_attn` (hard import in
+`ultrashape/models/denoisers/dit_mask.py`); deliberately skipped for now. When needed:
+either try Dao-AILab's official wheel
+`flash_attn-2.8.3+cu13torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl` (torch 2.9 ABI —
+may fail on torch 2.10 like nvdiffrast did) or build from PyPI:
+`pip install flash-attn --no-build-isolation` (slow; compiles against the exact stack).
+Also benefits other nodes (UmeAiRT reports Flash Attention missing at boot).
+
+---
+
 ## Outstanding — other missing nodes in `crk_ltx2.3-10eros.json`
 
 After the 10S swap, the workflow still references nodes from **other** packs that are
