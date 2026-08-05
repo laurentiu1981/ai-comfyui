@@ -47,8 +47,17 @@ ENV TORCH_CUDA_ARCH_LIST="12.0"
 # Install SageAttention from source (2.2.0 has native Blackwell support, no patching needed)
 RUN pip install git+https://github.com/thu-ml/SageAttention.git --no-build-isolation
 
-# Clone ComfyUI and install dependencies
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app && \
+# Clone ComfyUI at the ref given by the COMFYUI_VERSION build arg — a release
+# tag (vX.Y.Z = latest stable) or a branch name (note: git caches nothing, but
+# Docker does — "master" only re-clones when the arg VALUE changes)
+# (overridable from docker-compose.yml / .env / shell env). Bumping it re-runs
+# only this layer and the cheap ones below — the heavy torch/SageAttention
+# layers above stay cached. Before bumping, check the release's
+# requirements.txt keeps torch compatible with the image (2.10.0): the
+# source-built extensions (SageAttention, nvdiffrast, o_voxel, cumesh) break
+# if torch moves.
+ARG COMFYUI_VERSION=v0.30.2
+RUN git clone --branch "${COMFYUI_VERSION}" --depth 1 https://github.com/comfyanonymous/ComfyUI.git /app && \
     pip install -r /app/requirements.txt
 
 WORKDIR /app
