@@ -56,7 +56,7 @@ RUN pip install git+https://github.com/thu-ml/SageAttention.git --no-build-isola
 # requirements.txt keeps torch compatible with the image (2.10.0): the
 # source-built extensions (SageAttention, nvdiffrast, o_voxel, cumesh) break
 # if torch moves.
-ARG COMFYUI_VERSION=v0.32.0
+ARG COMFYUI_VERSION=v0.36.0
 RUN git clone --branch "${COMFYUI_VERSION}" --depth 1 https://github.com/comfyanonymous/ComfyUI.git /app && \
     pip install -r /app/requirements.txt
 
