@@ -8,10 +8,10 @@ services:
         # (or override via .env / shell env), then `docker compose up -d --build`.
         # Rollback: set the previous version back and `docker compose up -d` —
         # that version's image is still present locally, no rebuild needed.
-        COMFYUI_VERSION: ${COMFYUI_VERSION:-v0.36.0}
+        COMFYUI_VERSION: ${COMFYUI_VERSION:-v0.38.0}
     # Tag derived from the ComfyUI version so each upgrade gets its own image
     # (they share the huge torch/CUDA base layers; only the top layers differ)
-    image: cracoidic/crk-comfyui-blackwell:pytorch-2.10.0-cuda13.0-comfy-${COMFYUI_VERSION:-v0.36.0}
+    image: cracoidic/crk-comfyui-blackwell:pytorch-2.10.0-cuda13.0-comfy-${COMFYUI_VERSION:-v0.38.0}
     container_name: comfyui
     restart: unless-stopped
     ports:
@@ -20,7 +20,9 @@ services:
       bash -c "python main.py
       --listen 0.0.0.0
       --port 8188
-      --use-sage-attention"
+      --use-sage-attention
+      --disable-comfy-compiler
+      --disable-dynamic-vram"
     volumes:
       # Model directories
 #      - ~/ai/models/controlnet:/app/models/controlnet
