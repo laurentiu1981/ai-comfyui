@@ -32,6 +32,8 @@ Thumbs.db
 # Custom nodes (track folder, ignore contents)
 custom_nodes/*
 !custom_nodes/.gitkeep
+# Repo-owned helper nodes (used by scripts/outpaint.sh)
+!custom_nodes/comfyui-outpaint-helpers/
 
 # Python
 __pycache__/

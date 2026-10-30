@@ -227,3 +227,69 @@ scripts/create_refmod.sh input/andre --dry-run
 - All sources are cover-cropped to the first source's aspect ratio; keep one aspect per
   folder. Lower `--resolution` for clips, token cost grows with frames x pixels.
 - Re-running with the same name overwrites the file.
+
+### outpaint.sh
+
+Outpaint every photo in a folder to a target aspect ratio with Qwen Image 2.1,
+through the running `comfyui` container. One axis keeps its size, the other is
+extended, and the original pixels are pasted back untouched. Images already at the
+ratio (within a tolerance) are skipped; a failing image is logged and the run goes on.
+
+**Usage:**
+
+```bash
+scripts/outpaint.sh <folder> --aspect-ratio <ratio> [options]
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<folder>` | Yes | Folder with images (png/jpg/jpeg/webp/bmp); must be under `./input` |
+| `--aspect-ratio`, `-a` | Yes | Target width:height as `1:1`, `16:9`, `4/5`, `3x2` or a decimal like `1.5` |
+| `--output`, `-o` | No | Relative path = subfolder of `./output`; absolute or `~` path = copied there (default: `outpainting/{date}`) |
+| `--tolerance` | No | Skip images within this percentage of the target ratio (default: 1) |
+| `--anchor` | No | Position of the original on the extended axis: `center`, `start`, `end` (default: `center`) |
+| `--max-megapixels` | No | Canvas size the model works at; larger canvases are generated smaller and upscaled (default: 4) |
+| `--method`, `-m` | No | `lora` (default, outpaint LoRA) or `controlnet` (Fun ControlNet Union inpaint) |
+| `--prompt` | No | Fixed scene description instead of the automatic per-image caption |
+| `--no-caption` | No | Skip the caption (faster) |
+| `--show-prompt` | No | Print the prompt used for each image |
+| `--full` | No | 25 steps without the 8-step LoRA (default: 8 steps with it) |
+| `--steps`, `--cfg`, `--sampler`, `--scheduler`, `--seed` | No | Sampler settings (defaults: 8, 1, `euler`, `simple`, random seed) |
+| `--outpaint-lora`, `--outpaint-lora-strength` | No | `lora`: LoRA file and strength (default: `qwen-image-2.1/qwen-image-2.1-outpaint-v2`, 1.0) |
+| `--controlnet`, `--controlnet-strength`, `--no-reference` | No | `controlnet`: patch file, strength, drop the reference image |
+| `--lora`, `--model`, `--text-encoder`, `--vae` | No | Extra model-only LoRA and model files |
+| `--limit`, `--timeout`, `--url` | No | First N images only; max seconds per image (900); server URL |
+| `--dry-run` | No | Print the plan without generating |
+
+Output path placeholders: `{date}` (YYYY-MM-DD), `{datetime}` (YYYY-MM-DD_HH-mm-ss),
+`{time}`, `{year}`, `{month}`, `{day}`, `{folder}` (input folder name), `{aspect}`
+(`1:1` -> `1x1`).
+
+**Examples:**
+
+```bash
+# Square versions of every photo -> output/outpainting/2026-10-30/
+scripts/outpaint.sh input/cecile2 --aspect-ratio=1:1
+
+# 16:9 into a per-folder, timestamped subfolder
+scripts/outpaint.sh input/cecile2 --aspect-ratio 16:9 --output "outpainting/{folder}/{aspect}/{datetime}"
+
+# Copy the results to a host folder, full 25-step sampling
+scripts/outpaint.sh input/cecile2 --aspect-ratio 1.5 --output ~/my-folder --full
+
+# Keep the original at the top, 3% tolerance, ControlNet method
+scripts/outpaint.sh input/cecile2 --aspect-ratio 4:5 --anchor start --tolerance 3 --method controlnet
+
+# Check sizes and padding first
+scripts/outpaint.sh input/cecile2 --aspect-ratio 1:1 --dry-run
+```
+
+**Notes:**
+- Runs on the host (`python3` + Pillow) against the running server; credentials from `.env`.
+- Needs the Qwen Image 2.1 int8 model, text encoder and VAE, the
+  [outpaint LoRA](https://huggingface.co/ausboss/Qwen-Image-2.1-Outpaint-LoRA) and the
+  8-step LoRA in `models/loras/qwen-image-2.1/`. `--method controlnet` also needs the
+  Fun ControlNet Union patch and the node in `custom_nodes/comfyui-outpaint-helpers`.
+- About 10-30 s per image; `--full` and `controlnet` roughly double that.
