@@ -170,3 +170,60 @@ python3 scripts/prepend_text.py --folder=./data --text="[trigger], " --skip-exis
 - Files are read and written as UTF-8
 - Use `--skip-existing` to safely re-run without duplicating the prepend text
 - Shows statistics and handles permission/encoding errors
+
+### create_refmod.sh
+
+Build a MiniMax H3 RefMod from a folder of images (identity) and/or videos (motion)
+inside the running `comfyui` container. The result lands in `models/refmods/` and
+shows up in the **Load H3 RefMods** dropdown
+([creation guide](https://huggingface.co/datasets/malcolmrey/various/blob/main/h3-center/docs/MINIMAX_H3_REFMOD_CREATION_GUIDE.md)).
+
+**Usage:**
+
+```bash
+scripts/create_refmod.sh <folder> [options]
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<folder>` | Yes | Folder with images (png/jpg/jpeg/webp/bmp) and/or videos (mp4/mov/webm/mkv/avi/gif); must be under `./input` |
+| `--name` | No | RefMod name (default: `minimaxh3_<folder>_v1_refmod`) |
+| `--mode` | No | `encode` (full-res, carries identity/motion) or `training` (pooled, cheap, concept only); default `encode` |
+| `--concept-type` | No | `identity`, `pose_motion`, `clothing`, `style`, ... (default: `identity` with images, `pose_motion` for video-only) |
+| `--resolution` | No | Short-edge size, multiple of 32 (default: 1024; use 512 or lower for clips) |
+| `--max-tokens` | No | Token budget, 0 = unlimited; extra frames are dropped (default: 13500 for images, 0 when videos are present) |
+| `--max-frames` | No | Frames sampled per video before encoding; longer clips are sampled uniformly down to this (default: 61) |
+| `--all-frames` | No | Keep every frame of every clip (counts them with `ffprobe`) |
+| `--latent-frames` | No | Frames kept per video (default: same as `--max-frames`) |
+| `--multiplier` | No | Repeat the stacked refs N times along time (default: 1) |
+| `--description` | No | Text stored in the file; loaders emit it as `prompt_hint` |
+| `--device` | No | `cpu`, `cuda`, `auto` (default: cpu) |
+| `--dry-run` | No | List sources and the docker command without encoding |
+
+**Examples:**
+
+```bash
+# 8-20 reference images in input/andre -> models/refmods/minimaxh3_andre_v1_refmod.safetensors
+scripts/create_refmod.sh input/andre
+
+# One short action clip as a motion reference (lower res keeps the token count sane)
+scripts/create_refmod.sh input/wave --resolution 512 --description "waves with the right hand, then turns to camera"
+
+# Same, but keep every frame instead of sampling down to 61
+scripts/create_refmod.sh input/wave --resolution 512 --all-frames
+
+# Cheaper identity reference that fits the guide's 8192 budget
+scripts/create_refmod.sh input/andre --resolution 768 --max-tokens 8192
+
+# Check which sources will be used first
+scripts/create_refmod.sh input/andre --dry-run
+```
+
+**Notes:**
+- Default device is `cpu` (a `docker exec` python usually can't init CUDA on WSL2 while
+  the server holds the GPU); ~11 images take a few minutes.
+- All sources are cover-cropped to the first source's aspect ratio; keep one aspect per
+  folder. Lower `--resolution` for clips, token cost grows with frames x pixels.
+- Re-running with the same name overwrites the file.
