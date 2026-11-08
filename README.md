@@ -293,3 +293,87 @@ scripts/outpaint.sh input/cecile2 --aspect-ratio 1:1 --dry-run
   8-step LoRA in `models/loras/qwen-image-2.1/`. `--method controlnet` also needs the
   Fun ControlNet Union patch and the node in `custom_nodes/comfyui-outpaint-helpers`.
 - About 10-30 s per image; `--full` and `controlnet` roughly double that.
+
+### outfit.sh
+
+Dress the person in a photo, or in every photo of a folder, in the outfit from another
+picture with Qwen Image 2.1 and the
+[Outfit Swap Consistency LoRA](https://huggingface.co/ausboss/Qwen-Image-2.1-Outfit-Swap-Consistency-LoRA),
+through the running `comfyui` container. Nothing to mask: the person is reference image 1,
+the outfit image 2, and the LoRA keeps face, hair, pose, framing and background in place so
+only the clothes change. It is the API-format port of the author's workflow
+(`workflows/qwen-image-2.1-outfit-swap.json`), built from core nodes only.
+
+**Usage:**
+
+```bash
+scripts/outfit.sh <folder | image> --outfit <image> [options]
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<folder \| image>` | Yes | Image file, or folder with images (png/jpg/jpeg/webp/bmp); must be under `./input` |
+| `--outfit` | Yes | Picture of the outfit (a person wearing it, flat lay or product shot); must be under `./input` |
+| `--output`, `-o` | No | Relative path = subfolder of `./output`; absolute or `~` path = copied there (default: `outfit/{date}/{outfit}`) |
+| `--who` | No | Who to dress in a group photo, e.g. `"the woman on the left"` (default: `the person`) |
+| `--prompt` | No | Fixed outfit phrase, e.g. `"the red leather jacket shown in image 2"`, instead of the automatic description |
+| `--no-caption` | No | Skip the description and ask for `the outfit shown in image 2` (faster) |
+| `--coverage` | No | What the describer covers: `auto` (asks the text encoder whether legs/feet are visible), `full`, `no-shoes`, `top` |
+| `--extra` | No | Sentence appended to the request (default: `Replace everything they wear.`; try `"Keep their own shoes and legwear."`) |
+| `--template` | No | The whole request with `{who}`, `{outfit}`, `{extra}` placeholders |
+| `--show-prompt` | No | Print the request sent to Qwen for each image |
+| `--max-megapixels` | No | The model works at the source size (multiples of 32); larger sources are downscaled to this and the result upscaled back (default: 4) |
+| `--megapixels`, `--outfit-megapixels` | No | Force a fixed working size for the person picture (the author uses 2); outfit picture size (default: 1) |
+| `--model-size` | No | Keep the result at the model's working size instead of scaling it back when they differ |
+| `--full` | No | 25 steps without a speed LoRA, the author's tested recipe (default: 8 steps with one) |
+| `--speed-lora` | No | `8step` (default, `p_qwen_image_2.1_8step_v0.1`), `viggle` (Viggle Turbo 6-step, the one the author tested) or a file under `models/loras` |
+| `--steps`, `--cfg`, `--sampler`, `--scheduler`, `--seed` | No | Sampler settings (defaults: 8, 1, `euler`, `simple`, random seed) |
+| `--outfit-lora`, `--outfit-lora-strength`, `--no-outfit-lora` | No | LoRA file and strength (default: `qwen-image-2.1/qwen-image-2.1-outfit-swap`, 1.0), or plain Qwen |
+| `--no-cache`, `--lora`, `--model`, `--text-encoder`, `--vae` | No | Drop the QwenImage21Cache node; extra model-only LoRA and model files |
+| `--limit`, `--timeout`, `--url` | No | First N images only; max seconds per image (900); server URL |
+| `--dry-run` | No | Print the plan without generating |
+
+Output path placeholders: `{date}` (YYYY-MM-DD), `{datetime}` (YYYY-MM-DD_HH-mm-ss),
+`{time}`, `{year}`, `{month}`, `{day}`, `{folder}` (input folder name), `{outfit}`
+(outfit file name without extension).
+
+**Examples:**
+
+```bash
+# Every photo of a folder in the dress -> output/outfit/2026-11-08/rochie_gym/
+scripts/outfit.sh input/cecile2 --outfit input/rochie_gym.webp
+
+# One photo, print the request Qwen got
+scripts/outfit.sh input/cecile2/photo.png --outfit input/rochie_gym.webp --show-prompt
+
+# Group photo, full 25-step sampling at the author's fixed 2 MP working size
+scripts/outfit.sh input/party --outfit input/jacket.png --who "the woman on the left" --full --megapixels 2
+
+# 8 steps with the Viggle Turbo LoRA the author tested
+scripts/outfit.sh input/cecile2 --outfit input/rochie_gym.webp --speed-lora viggle
+
+# Your own outfit phrase, keep their shoes
+scripts/outfit.sh input/cecile2 --outfit input/jacket.png --prompt "the black leather jacket shown in image 2" --extra "Keep their own shoes and legwear."
+
+# Per-folder, per-outfit, timestamped subfolder; first 3 images only
+scripts/outfit.sh input/cecile2 --outfit input/jacket.png --output "outfit/{folder}/{outfit}/{datetime}" --limit 3
+```
+
+**Notes:**
+- Runs on the host (`python3` + Pillow) against the running server; credentials from `.env`.
+- Needs the Qwen Image 2.1 int8 model, text encoder and VAE, the outfit swap LoRA and the
+  8-step LoRA in `models/loras/qwen-image-2.1/`; `--speed-lora viggle` needs
+  [Viggle Turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo) there too
+  (Qwen Research License, research use).
+- The outfit description comes from the Qwen3-VL text encoder: as in the original workflow it
+  first checks whether the person picture shows legs and feet, and leaves shoes or the lower
+  half out of the description so the picture is not zoomed out to fit the whole outfit.
+  Crop the outfit picture to the clothes you want when it shows more.
+- A source with sides that are multiples of 32 and under 4 MP is never resampled; otherwise
+  the only resample is to the nearest multiple of 32 and back (or down to the cap and up).
+- About 15 s per image on the RTX PRO 6000, `--full` about the same (the description
+  dominates); `--no-caption` or `--prompt` skips the three text-encoder passes.
+- Limits per the author: shoes are stubborn, the pose is kept (an outfit that needs
+  another pose will not get one), and the outfit is not drawn more exactly than plain Qwen.
